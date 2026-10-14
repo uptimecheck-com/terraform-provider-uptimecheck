@@ -45,7 +45,7 @@ type monitorModel struct {
 	HeartbeatURL    types.String         `tfsdk:"heartbeat_url"`
 }
 
-var monitorTypes = []string{"http", "tcp", "ping", "dns", "domain", "heartbeat", "server", "vendor", "crawl"}
+var monitorTypes = []string{"http", "tcp", "ping", "dns", "domain", "heartbeat", "server", "vendor", "crawl", "flow"}
 
 // Types our locations check on an interval (the API requires one; the provider defaults to 300 s).
 var checked = map[string]bool{"http": true, "tcp": true, "ping": true, "dns": true}
@@ -67,7 +67,7 @@ func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"name": schema.StringAttribute{Description: "Shown in the app and in alerts.", Required: true},
 			"target": schema.StringAttribute{
-				Description: "URL (http, crawl), host (tcp, ping, dns), domain (domain), or a catalog id or status page address (vendor). Not used for heartbeat and server.",
+				Description: "URL (http, crawl, and the start page of a flow), host (tcp, ping, dns), domain (domain), or a catalog id or status page address (vendor). Not used for heartbeat and server.",
 				Optional:    true,
 			},
 			"port":             schema.Int64Attribute{Description: "tcp only.", Optional: true},
