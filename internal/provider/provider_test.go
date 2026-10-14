@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -83,7 +84,7 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.next++
-		id := "mon_" + string(rune('0'+f.next))
+		id := fmt.Sprintf("mon_%d", f.next)
 		kind := body["type"].(string)
 		config := map[string]any{}
 		for k, v := range defaults[kind] {
@@ -202,9 +203,14 @@ func TestAccMonitor(t *testing.T) {
 			{
 				// Someone changes a managed key in the app: the plan wants it back.
 				PreConfig: func() {
+					// Terraform creates resources in parallel, so find the shop by name.
 					api.mu.Lock()
-					api.monitors["mon_1"]["config"].(map[string]any)["expectedStatus"] = "500"
-					api.mu.Unlock()
+					defer api.mu.Unlock()
+					for _, m := range api.monitors {
+						if m["name"] == "Shop checkout" {
+							m["config"].(map[string]any)["expectedStatus"] = "500"
+						}
+					}
 				},
 				Config:             config("Shop checkout", true),
 				PlanOnly:           true,
