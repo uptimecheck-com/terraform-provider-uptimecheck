@@ -69,7 +69,7 @@ func NewAlertChannelsDataSource() datasource.DataSource {
 		attrs: map[string]schema.Attribute{
 			"id":         schema.StringAttribute{Computed: true},
 			"name":       schema.StringAttribute{Computed: true},
-			"type":       schema.StringAttribute{Computed: true, Description: "email, push, slack, teams, discord, telegram, pagerduty, webhook, sms or voice."},
+			"type":       schema.StringAttribute{Computed: true, Description: "email, push, slack, teams, discord, google_chat, mattermost, telegram, pagerduty, ntfy, pushover, webhook, sms or voice."},
 			"is_default": schema.BoolAttribute{Computed: true, Description: "New monitors in the app get it automatically."},
 			"enabled":    schema.BoolAttribute{Computed: true},
 		},
