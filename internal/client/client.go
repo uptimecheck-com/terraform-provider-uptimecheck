@@ -127,16 +127,18 @@ type Monitor struct {
 	HeartbeatURL    *string         `json:"heartbeatUrl"`
 }
 
-// MonitorInput is what POST accepts and PATCH merges.
+// MonitorInput is what POST accepts and PATCH merges. Regions and ChannelIDs are left out when
+// nil (the API rejects null): POST then uses [] and the workspace's default alert channels, PATCH
+// keeps the current ones. A pointer to an empty list sends [].
 type MonitorInput struct {
 	Type            string          `json:"type,omitempty"`
 	Name            string          `json:"name"`
 	Target          *string         `json:"target,omitempty"`
 	Port            *int64          `json:"port,omitempty"`
 	IntervalSeconds *int64          `json:"intervalSeconds,omitempty"`
-	Regions         []string        `json:"regions"`
+	Regions         *[]string       `json:"regions,omitempty"`
 	ProjectID       *string         `json:"projectId"`
-	ChannelIDs      []string        `json:"channelIds"`
+	ChannelIDs      *[]string       `json:"channelIds,omitempty"`
 	Config          json.RawMessage `json:"config,omitempty"`
 }
 

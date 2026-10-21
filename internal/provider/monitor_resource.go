@@ -56,7 +56,7 @@ func (r *monitorResource) Metadata(_ context.Context, req resource.MetadataReque
 
 func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "A monitor: a website or API, port, ping, DNS records, domain expiry, cron job, server, third-party service or site health scan.",
+		Description: "A monitor: a website or API, port, ping, DNS records, domain expiry, cron job, server, third-party service, site health scan or multi-step flow.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"type": schema.StringAttribute{
@@ -145,16 +145,19 @@ func (r *monitorResource) input(ctx context.Context, plan, prior monitorModel) (
 		}
 		return planned, true
 	}
-	var err error
 	if set, ok := pick(plan.Regions, prior.Regions); ok {
-		if in.Regions, err = stringList(ctx, set); err != nil {
+		list, err := stringList(ctx, set)
+		if err != nil {
 			return in, err
 		}
+		in.Regions = &list
 	}
 	if set, ok := pick(plan.ChannelIDs, prior.ChannelIDs); ok {
-		if in.ChannelIDs, err = stringList(ctx, set); err != nil {
+		list, err := stringList(ctx, set)
+		if err != nil {
 			return in, err
 		}
+		in.ChannelIDs = &list
 	}
 	if !plan.Config.IsNull() && !plan.Config.IsUnknown() {
 		in.Config = json.RawMessage(plan.Config.ValueString())

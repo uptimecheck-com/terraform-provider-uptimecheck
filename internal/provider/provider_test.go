@@ -14,6 +14,7 @@ import (
 	fwprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -76,6 +77,10 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reply(200, []any{map[string]any{"id": "prj_1", "name": "Acme", "color": "#1F5CFF"}})
 	case r.URL.Path == "/status-pages":
 		reply(200, []any{})
+	case r.URL.Path == "/monitors" && r.Method == "POST" && (hasNull(body, "regions") || hasNull(body, "channelIds")):
+		// Like the real API: arrays may be left out, but null is invalid.
+		w.WriteHeader(422)
+		w.Write([]byte(`{"error":{"code":"validation_failed","message":"Check the highlighted fields.","fields":{"regions":"Invalid input: expected array, received null"}}}`))
 	case r.URL.Path == "/monitors" && r.Method == "POST":
 		// Like the real API: checked types need an interval.
 		if _, ok := body["intervalSeconds"]; !ok && body["type"] == "http" {
@@ -141,6 +146,11 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(404)
 	}
+}
+
+func hasNull(body map[string]any, key string) bool {
+	v, ok := body[key]
+	return ok && v == nil
 }
 
 func factories() map[string]func() (tfprotov6.ProviderServer, error) {
@@ -218,4 +228,36 @@ func TestAccMonitor(t *testing.T) {
 			},
 		},
 	})
+}
+
+// The API rejects null arrays: a monitor without regions or channel_ids must leave them out, so
+// POST uses the defaults (all locations, the workspace's default channels).
+func TestInputLeavesOutUnsetLists(t *testing.T) {
+	ctx := context.Background()
+	r := &monitorResource{}
+	unset := monitorModel{
+		Type:            types.StringValue("heartbeat"),
+		Name:            types.StringValue("Nightly backup"),
+		IntervalSeconds: types.Int64Null(),
+		Regions:         types.SetUnknown(types.StringType),
+		ChannelIDs:      types.SetUnknown(types.StringType),
+	}
+	in, err := r.input(ctx, unset, monitorModel{Regions: types.SetNull(types.StringType), ChannelIDs: types.SetNull(types.StringType)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(in)
+	if strings.Contains(string(body), "regions") || strings.Contains(string(body), "channelIds") {
+		t.Fatalf("unset lists must be left out, got %s", body)
+	}
+	empty := unset
+	empty.ChannelIDs = types.SetValueMust(types.StringType, nil)
+	in, err = r.input(ctx, empty, monitorModel{Regions: types.SetNull(types.StringType), ChannelIDs: types.SetNull(types.StringType)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = json.Marshal(in)
+	if !strings.Contains(string(body), `"channelIds":[]`) {
+		t.Fatalf("an empty channel_ids must send [], got %s", body)
+	}
 }

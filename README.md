@@ -19,7 +19,7 @@ More in [examples/main.tf](examples/main.tf).
 ## What's in it
 
 - `uptimecheck_monitor`: every monitor type (http, tcp, ping, dns, domain, heartbeat, server, vendor,
-  crawl). `config` is the type's settings as JSON, as in the API docs. Only the keys you write are
+  crawl, flow). `config` is the type's settings as JSON, as in the API docs. Only the keys you write are
   managed; the app's defaults for the rest aren't drift. Removing a key leaves its current value.
   `paused` pauses and resumes. `heartbeat_url` (sensitive) is the cron job's ping URL. Import with
   `terraform import uptimecheck_monitor.name mon_…`.
