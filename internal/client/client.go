@@ -186,3 +186,43 @@ type StatusPage struct {
 	ProjectID *string `json:"projectId"`
 	Language  string  `json:"language"`
 }
+
+// StatusPageComponent is a monitor on a status page, under the name visitors see.
+type StatusPageComponent struct {
+	MonitorID string  `json:"monitorId"`
+	Name      string  `json:"name"`
+	Group     *string `json:"group"`
+}
+
+// StatusPageDetail is one status page with its look and its components (GET /status-pages/{id}).
+type StatusPageDetail struct {
+	StatusPage
+	Description  string                `json:"description"`
+	LogoURL      *string               `json:"logoUrl"`
+	WebsiteURL   *string               `json:"websiteUrl"`
+	AccentColor  string                `json:"accentColor"`
+	Theme        string                `json:"theme"`
+	Announcement *string               `json:"announcement"`
+	Noindex      bool                  `json:"noindex"`
+	ShowBranding bool                  `json:"showBranding"`
+	Components   []StatusPageComponent `json:"componentList"`
+}
+
+// StatusPageInput is what POST accepts and PATCH merges. Slug is left out when nil (the address then comes
+// from the title, or stays); the nullable fields are always sent, so removing one from the configuration clears it.
+type StatusPageInput struct {
+	Title        string                `json:"title"`
+	Description  string                `json:"description"`
+	Slug         *string               `json:"slug,omitempty"`
+	LogoURL      *string               `json:"logoUrl"`
+	WebsiteURL   *string               `json:"websiteUrl"`
+	AccentColor  string                `json:"accentColor"`
+	Theme        string                `json:"theme"`
+	Language     string                `json:"language"`
+	Announcement *string               `json:"announcement"`
+	Published    bool                  `json:"published"`
+	Noindex      bool                  `json:"noindex"`
+	ShowBranding bool                  `json:"showBranding"`
+	ProjectID    *string               `json:"projectId"`
+	Components   []StatusPageComponent `json:"components"`
+}

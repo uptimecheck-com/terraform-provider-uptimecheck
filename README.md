@@ -32,6 +32,11 @@ More in [examples/main.tf](examples/main.tf).
   drift. `is_default`, `enabled`, `delay_minutes` (escalation). A webhook's signing secret is in
   `webhook_secret` (sensitive), returned once at creation and empty after an import. SMS, phone calls,
   Telegram, push and Add to Slack are set up in the app; read them with the data source.
+- `uptimecheck_status_page`: a public status page with its look (`title`, `description`, `accent_color`,
+  `theme`, `language`, `logo_url`, `website_url`, `announcement`, `published`, `noindex`, `show_branding`,
+  `project_id`) and its `components` (monitors under the names visitors see, in order, optionally grouped).
+  `slug` can only be chosen on plans with custom addresses; left out, it comes from the title and is read back
+  with `url`. The password, the email access list and custom CSS are set in the app and left alone.
 - Data sources: `uptimecheck_alert_channels`, `uptimecheck_projects`, `uptimecheck_status_pages`
   (each an `items` list).
 

@@ -140,6 +140,8 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var body map[string]any
 	json.NewDecoder(r.Body).Decode(&body)
 	switch {
+	case parts[0] == "status-pages" && (len(parts) == 2 || r.Method == "POST"):
+		f.serveStatusPages(w, r, parts, body, reply)
 	case (parts[0] == "projects" || parts[0] == "alert-channels") && (len(parts) == 2 || r.Method == "POST"):
 		f.serveThings(w, r, parts, body, reply)
 	case r.URL.Path == "/alert-channels":
@@ -217,6 +219,62 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(404)
 	}
+}
+
+// serveStatusPages behaves like /status-pages: the address comes from the title, a slug is refused (this
+// workspace's plan has no custom addresses), and `components` comes back as `componentList`.
+func (f *fakeAPI) serveStatusPages(w http.ResponseWriter, r *http.Request, parts []string, body map[string]any, reply func(int, any)) {
+	if f.things == nil {
+		f.things, f.secrets = map[string]map[string]any{}, map[string]map[string]any{}
+	}
+	if _, sent := body["slug"]; sent {
+		w.WriteHeader(402)
+		w.Write([]byte(`{"error":{"code":"plan_limit","message":"Choosing a status page's address needs a plan with custom addresses."}}`))
+		return
+	}
+	apply := func(t map[string]any) {
+		for k, v := range body {
+			if k == "components" {
+				list := []any{}
+				for _, c := range v.([]any) {
+					item := c.(map[string]any)
+					if _, ok := item["group"]; !ok {
+						item["group"] = nil
+					}
+					list = append(list, item)
+				}
+				t["componentList"] = list
+				t["components"] = float64(len(list))
+			} else {
+				t[k] = v
+			}
+		}
+	}
+	if len(parts) == 1 {
+		f.next++
+		id := fmt.Sprintf("sp_%d", f.next)
+		slug := strings.ReplaceAll(strings.ToLower(body["title"].(string)), " ", "-") + "-x7"
+		t := map[string]any{"id": id, "slug": slug, "url": "https://platform.test/s/" + slug, "description": "", "logoUrl": nil, "websiteUrl": nil, "accentColor": "#1F5CFF", "theme": "auto", "language": "en", "announcement": nil, "published": true, "noindex": false, "showBranding": true, "projectId": nil, "passwordProtected": false, "emailAccess": false, "components": 0.0, "componentList": []any{}}
+		apply(t)
+		f.things[id] = t
+		reply(201, t)
+		return
+	}
+	t, ok := f.things[parts[1]]
+	if !ok {
+		w.WriteHeader(404)
+		w.Write([]byte(`{"error":{"code":"not_found","message":"Status page not found."}}`))
+		return
+	}
+	switch r.Method {
+	case "PATCH":
+		apply(t)
+	case "DELETE":
+		delete(f.things, parts[1])
+		w.WriteHeader(204)
+		return
+	}
+	reply(200, t)
 }
 
 func hasNull(body map[string]any, key string) bool {
@@ -442,6 +500,85 @@ func TestAccProjectAndAlertChannels(t *testing.T) {
 			{ResourceName: "uptimecheck_project.acme", ImportState: true, ImportStateVerify: true},
 			// The API never returns a channel's addresses or its signing secret.
 			{ResourceName: "uptimecheck_alert_channel.hook", ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"config", "webhook_secret"}},
+		},
+	})
+}
+
+const statusPageConfig = `
+resource "uptimecheck_monitor" "shop" {
+  type   = "http"
+  name   = "Shop"
+  target = "https://shop.acme.example"
+}
+
+resource "uptimecheck_monitor" "api" {
+  type   = "http"
+  name   = "API"
+  target = "https://api.acme.example"
+}
+
+resource "uptimecheck_status_page" "acme" {
+  title = "Acme status"
+  %s
+  components = [
+    { monitor_id = uptimecheck_monitor.shop.id, name = "Webshop", group = "Shop" },
+    %s
+  ]
+}
+
+resource "uptimecheck_status_page" "bare" {
+  title     = "Internal"
+  published = false
+}
+`
+
+// A page with its components: created, changed in place (an announcement added and removed, components
+// reordered and renamed), imported; a page without components stays without drift.
+func TestAccStatusPage(t *testing.T) {
+	api := &fakeAPI{monitors: map[string]map[string]any{}}
+	srv := httptest.NewServer(api)
+	defer srv.Close()
+	t.Setenv("UPTIMECHECK_ENDPOINT", srv.URL)
+	t.Setenv("UPTIMECHECK_API_KEY", "uc_test")
+	second := `{ monitor_id = uptimecheck_monitor.api.id, name = "API" },`
+
+	tfresource.Test(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: factories(),
+		Steps: []tfresource.TestStep{
+			{
+				Config: fmt.Sprintf(statusPageConfig, "", second),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					// The address comes from the API, and no slug is sent when none is written.
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "slug", "acme-status-x7"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "url", "https://platform.test/s/acme-status-x7"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "theme", "auto"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "published", "true"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "components.#", "2"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "components.0.name", "Webshop"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "components.0.group", "Shop"),
+					tfresource.TestCheckNoResourceAttr("uptimecheck_status_page.acme", "components.1.group"),
+					tfresource.TestCheckNoResourceAttr("uptimecheck_status_page.acme", "announcement"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.bare", "published", "false"),
+					tfresource.TestCheckNoResourceAttr("uptimecheck_status_page.bare", "components.#"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(statusPageConfig, `announcement = "Planned maintenance on Sunday."`, ""),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "announcement", "Planned maintenance on Sunday."),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "components.#", "1"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "slug", "acme-status-x7"),
+				),
+			},
+			{
+				// Taking the announcement out of the configuration clears it on the page.
+				Config: fmt.Sprintf(statusPageConfig, "", second),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckNoResourceAttr("uptimecheck_status_page.acme", "announcement"),
+					tfresource.TestCheckResourceAttr("uptimecheck_status_page.acme", "components.#", "2"),
+				),
+			},
+			{ResourceName: "uptimecheck_status_page.acme", ImportState: true, ImportStateVerify: true},
 		},
 	})
 }

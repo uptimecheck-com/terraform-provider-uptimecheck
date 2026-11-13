@@ -78,6 +78,20 @@ resource "uptimecheck_monitor" "site" {
   config     = jsonencode({ maxPages = 250 })
 }
 
+resource "uptimecheck_status_page" "acme" {
+  title       = "Acme status"
+  description = "The shop and its nightly jobs."
+  project_id  = local.client
+  components = [
+    { monitor_id = uptimecheck_monitor.checkout.id, name = "Checkout", group = "Shop" },
+    { monitor_id = uptimecheck_monitor.backup.id, name = "Nightly backup" },
+  ]
+}
+
+output "status_page_url" {
+  value = uptimecheck_status_page.acme.url
+}
+
 output "backup_ping_url" {
   value     = uptimecheck_monitor.backup.heartbeat_url
   sensitive = true
