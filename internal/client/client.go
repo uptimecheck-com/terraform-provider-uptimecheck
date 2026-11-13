@@ -142,12 +142,33 @@ type MonitorInput struct {
 	Config          json.RawMessage `json:"config,omitempty"`
 }
 
+// AlertChannel as the API returns it: never its addresses or keys, only a hint of them.
+// WebhookSecret is in the answer to POST for a webhook channel, and nowhere else.
 type AlertChannel struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	IsDefault bool   `json:"isDefault"`
-	Enabled   bool   `json:"enabled"`
+	ID            string  `json:"id"`
+	Name          string  `json:"name"`
+	Type          string  `json:"type"`
+	Hint          string  `json:"hint"`
+	IsDefault     bool    `json:"isDefault"`
+	Enabled       bool    `json:"enabled"`
+	DelayMinutes  int64   `json:"delayMinutes"`
+	WebhookSecret *string `json:"webhookSecret"`
+}
+
+// AlertChannelInput is what POST accepts and PATCH merges; nil fields are left out. PATCH merges
+// Config with the saved one.
+type AlertChannelInput struct {
+	Type         string            `json:"type,omitempty"`
+	Name         *string           `json:"name,omitempty"`
+	Config       map[string]string `json:"config,omitempty"`
+	IsDefault    *bool             `json:"isDefault,omitempty"`
+	Enabled      *bool             `json:"enabled,omitempty"`
+	DelayMinutes *int64            `json:"delayMinutes,omitempty"`
+}
+
+type ProjectInput struct {
+	Name  string `json:"name"`
+	Color string `json:"color,omitempty"`
 }
 
 type Project struct {

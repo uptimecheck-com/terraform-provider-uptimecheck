@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 func TestSchemasAreValid(t *testing.T) {
@@ -48,7 +49,75 @@ func TestSchemasAreValid(t *testing.T) {
 type fakeAPI struct {
 	mu       sync.Mutex
 	monitors map[string]map[string]any
-	next     int
+	// Projects and alert channels made through the API, by id.
+	things map[string]map[string]any
+	// The config of each alert channel as last sent: the API keeps it and never returns it.
+	secrets map[string]map[string]any
+	next    int
+}
+
+// things serves POST /<kind> and GET, PATCH, DELETE /<kind>/<id> for projects and alert channels.
+func (f *fakeAPI) serveThings(w http.ResponseWriter, r *http.Request, parts []string, body map[string]any, reply func(int, any)) {
+	if f.things == nil {
+		f.things, f.secrets = map[string]map[string]any{}, map[string]map[string]any{}
+	}
+	channel := parts[0] == "alert-channels"
+	if len(parts) == 1 {
+		f.next++
+		var t map[string]any
+		if channel {
+			id := fmt.Sprintf("ach_%d", f.next)
+			t = map[string]any{"id": id, "type": body["type"], "name": body["name"], "hint": "…hint", "isDefault": true, "enabled": true, "verified": true, "delayMinutes": 0.0}
+			for _, k := range []string{"isDefault", "delayMinutes"} {
+				if v, ok := body[k]; ok {
+					t[k] = v
+				}
+			}
+			f.secrets[id], _ = body["config"].(map[string]any)
+			f.things[id] = t
+			if body["type"] == "webhook" {
+				// Only the answer to POST carries the signing secret.
+				once := map[string]any{"webhookSecret": "whsec_shown_once"}
+				for k, v := range t {
+					once[k] = v
+				}
+				reply(201, once)
+				return
+			}
+		} else {
+			id := fmt.Sprintf("prj_%d", f.next)
+			t = map[string]any{"id": id, "name": body["name"], "color": "#1F5CFF"}
+			if v, ok := body["color"]; ok {
+				t["color"] = v
+			}
+			f.things[id] = t
+		}
+		reply(201, t)
+		return
+	}
+	t, ok := f.things[parts[1]]
+	if !ok {
+		w.WriteHeader(404)
+		w.Write([]byte(`{"error":{"code":"not_found","message":"Not found."}}`))
+		return
+	}
+	switch r.Method {
+	case "PATCH":
+		for k, v := range body {
+			if k == "config" {
+				for ck, cv := range v.(map[string]any) {
+					f.secrets[parts[1]][ck] = cv
+				}
+			} else {
+				t[k] = v
+			}
+		}
+	case "DELETE":
+		delete(f.things, parts[1])
+		w.WriteHeader(204)
+		return
+	}
+	reply(200, t)
 }
 
 var defaults = map[string]map[string]any{
@@ -71,6 +140,8 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var body map[string]any
 	json.NewDecoder(r.Body).Decode(&body)
 	switch {
+	case (parts[0] == "projects" || parts[0] == "alert-channels") && (len(parts) == 2 || r.Method == "POST"):
+		f.serveThings(w, r, parts, body, reply)
 	case r.URL.Path == "/alert-channels":
 		reply(200, []any{map[string]any{"id": "ch_1", "name": "#ops", "type": "slack", "isDefault": true, "enabled": true}})
 	case r.URL.Path == "/projects":
@@ -260,4 +331,117 @@ func TestInputLeavesOutUnsetLists(t *testing.T) {
 	if !strings.Contains(string(body), `"channelIds":[]`) {
 		t.Fatalf("an empty channel_ids must send [], got %s", body)
 	}
+}
+
+const clientConfig = `
+resource "uptimecheck_project" "acme" {
+  name = %q
+}
+
+resource "uptimecheck_alert_channel" "ops" {
+  type          = "slack"
+  name          = "#ops"
+  delay_minutes = %d
+  config        = { webhookUrl = %q }
+}
+
+resource "uptimecheck_alert_channel" "hook" {
+  type       = "webhook"
+  name       = "Deploy bot"
+  is_default = false
+  enabled    = false
+  config     = { url = "https://hooks.example.com/uptime" }
+}
+
+resource "uptimecheck_monitor" "site" {
+  type        = "http"
+  name        = "Acme site"
+  target      = "https://acme.example.com"
+  project_id  = uptimecheck_project.acme.id
+  channel_ids = [uptimecheck_alert_channel.ops.id]
+}
+`
+
+// A client set up from nothing: project, channels, and a monitor that uses both.
+func TestAccProjectAndAlertChannels(t *testing.T) {
+	api := &fakeAPI{monitors: map[string]map[string]any{}}
+	srv := httptest.NewServer(api)
+	defer srv.Close()
+	t.Setenv("UPTIMECHECK_ENDPOINT", srv.URL)
+	t.Setenv("UPTIMECHECK_API_KEY", "uc_test")
+	secretOf := func(name string) map[string]any {
+		api.mu.Lock()
+		defer api.mu.Unlock()
+		for id, c := range api.things {
+			if c["name"] == name {
+				return api.secrets[id]
+			}
+		}
+		return nil
+	}
+	hook := "https://hooks.slack.com/services/T0/B0/first"
+
+	tfresource.Test(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: factories(),
+		Steps: []tfresource.TestStep{
+			{
+				Config: fmt.Sprintf(clientConfig, "Acme", 0, hook),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("uptimecheck_project.acme", "color", "#1F5CFF"),
+					tfresource.TestCheckResourceAttr("uptimecheck_alert_channel.ops", "is_default", "true"),
+					tfresource.TestCheckResourceAttr("uptimecheck_alert_channel.ops", "enabled", "true"),
+					tfresource.TestCheckNoResourceAttr("uptimecheck_alert_channel.ops", "webhook_secret"),
+					// A webhook's signing secret is kept from creation; it starts paused as written.
+					tfresource.TestCheckResourceAttr("uptimecheck_alert_channel.hook", "webhook_secret", "whsec_shown_once"),
+					tfresource.TestCheckResourceAttr("uptimecheck_alert_channel.hook", "enabled", "false"),
+					tfresource.TestCheckResourceAttr("uptimecheck_alert_channel.hook", "is_default", "false"),
+					tfresource.TestCheckResourceAttrPair("uptimecheck_monitor.site", "project_id", "uptimecheck_project.acme", "id"),
+					tfresource.TestCheckResourceAttr("uptimecheck_monitor.site", "channel_ids.#", "1"),
+					func(*terraform.State) error {
+						if got := secretOf("#ops")["webhookUrl"]; got != hook {
+							return fmt.Errorf("the API got webhookUrl %v", got)
+						}
+						return nil
+					},
+				),
+			},
+			{
+				// A rename and a delay: the address isn't sent again, and the secret stays in state.
+				PreConfig: func() {
+					api.mu.Lock()
+					defer api.mu.Unlock()
+					for id, c := range api.things {
+						if c["name"] == "#ops" {
+							api.secrets[id]["webhookUrl"] = "untouched"
+						}
+					}
+				},
+				Config: fmt.Sprintf(clientConfig, "Acme Corp", 5, hook),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("uptimecheck_project.acme", "name", "Acme Corp"),
+					tfresource.TestCheckResourceAttr("uptimecheck_alert_channel.ops", "delay_minutes", "5"),
+					tfresource.TestCheckResourceAttr("uptimecheck_alert_channel.hook", "webhook_secret", "whsec_shown_once"),
+					func(*terraform.State) error {
+						if got := secretOf("#ops")["webhookUrl"]; got != "untouched" {
+							return fmt.Errorf("an unrelated edit sent the address again: %v", got)
+						}
+						return nil
+					},
+				),
+			},
+			{
+				// A new address is sent.
+				Config: fmt.Sprintf(clientConfig, "Acme Corp", 5, "https://hooks.slack.com/services/T0/B0/second"),
+				Check: func(*terraform.State) error {
+					if got := secretOf("#ops")["webhookUrl"]; got != "https://hooks.slack.com/services/T0/B0/second" {
+						return fmt.Errorf("the new address wasn't sent: %v", got)
+					}
+					return nil
+				},
+			},
+			{ResourceName: "uptimecheck_project.acme", ImportState: true, ImportStateVerify: true},
+			// The API never returns a channel's addresses or its signing secret.
+			{ResourceName: "uptimecheck_alert_channel.hook", ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"config", "webhook_secret"}},
+		},
+	})
 }

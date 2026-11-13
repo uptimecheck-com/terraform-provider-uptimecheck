@@ -77,7 +77,7 @@ func (p *uptimecheckProvider) Configure(ctx context.Context, req provider.Config
 }
 
 func (p *uptimecheckProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewMonitorResource}
+	return []func() resource.Resource{NewMonitorResource, NewAlertChannelResource, NewProjectResource}
 }
 
 func (p *uptimecheckProvider) DataSources(_ context.Context) []func() datasource.DataSource {

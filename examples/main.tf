@@ -9,12 +9,39 @@ terraform {
 # The key comes from UPTIMECHECK_API_KEY (Settings › API, read & write).
 provider "uptimecheck" {}
 
+variable "slack_webhook_url" {
+  type      = string
+  sensitive = true
+}
+
+# A client from nothing: its project, where its alerts go, and its monitors.
+resource "uptimecheck_project" "acme" {
+  name  = "Acme"
+  color = "#22D37A"
+}
+
+resource "uptimecheck_alert_channel" "slack" {
+  type   = "slack"
+  name   = "#acme-ops"
+  config = { webhookUrl = var.slack_webhook_url }
+}
+
+# Escalation: the inbox hears about an outage that has lasted 15 minutes.
+resource "uptimecheck_alert_channel" "inbox" {
+  type          = "email"
+  name          = "Acme on-call inbox"
+  is_default    = false
+  delay_minutes = 15
+  config        = { to = "oncall@acme.example, cto@acme.example" }
+}
+
+# Channels set up in the app (SMS, Telegram, push, Add to Slack) are read, not managed.
 data "uptimecheck_alert_channels" "all" {}
-data "uptimecheck_projects" "all" {}
 
 locals {
-  slack  = [for c in data.uptimecheck_alert_channels.all.items : c.id if c.type == "slack"]
-  client = one([for p in data.uptimecheck_projects.all.items : p.id if p.name == "Acme"])
+  client = uptimecheck_project.acme.id
+  slack  = [uptimecheck_alert_channel.slack.id, uptimecheck_alert_channel.inbox.id]
+  sms    = [for c in data.uptimecheck_alert_channels.all.items : c.id if c.type == "sms"]
 }
 
 resource "uptimecheck_monitor" "checkout" {

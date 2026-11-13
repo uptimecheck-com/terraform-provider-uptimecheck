@@ -23,6 +23,15 @@ More in [examples/main.tf](examples/main.tf).
   managed; the app's defaults for the rest aren't drift. Removing a key leaves its current value.
   `paused` pauses and resumes. `heartbeat_url` (sensitive) is the cron job's ping URL. Import with
   `terraform import uptimecheck_monitor.name mon_…`.
+- `uptimecheck_project`: a project (client) with `name` and `color`. Deleting it leaves its monitors and
+  status pages without a project; its client reports and client access go with it.
+- `uptimecheck_alert_channel`: where alerts go, for the types that need only their address or key (email,
+  slack, teams, discord, google_chat, mattermost, pagerduty, ntfy, pushover, webhook). `config` is a
+  sensitive map (`to`, `webhookUrl`, `url`, `routingKey`, `topicUrl` and `token`, `userKey` and `appToken`).
+  The API never returns it, so it is sent only when it changes here and a change made in the app isn't
+  drift. `is_default`, `enabled`, `delay_minutes` (escalation). A webhook's signing secret is in
+  `webhook_secret` (sensitive), returned once at creation and empty after an import. SMS, phone calls,
+  Telegram, push and Add to Slack are set up in the app; read them with the data source.
 - Data sources: `uptimecheck_alert_channels`, `uptimecheck_projects`, `uptimecheck_status_pages`
   (each an `items` list).
 
