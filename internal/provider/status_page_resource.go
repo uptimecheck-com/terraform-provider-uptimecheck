@@ -42,6 +42,7 @@ type statusPageResourceModel struct {
 	Published    types.Bool   `tfsdk:"published"`
 	Noindex      types.Bool   `tfsdk:"noindex"`
 	ShowBranding types.Bool   `tfsdk:"show_branding"`
+	ShowResponse types.Bool   `tfsdk:"show_response_times"`
 	ProjectID    types.String `tfsdk:"project_id"`
 	Components   types.List   `tfsdk:"components"`
 }
@@ -71,17 +72,18 @@ func (r *statusPageResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"url":           schema.StringAttribute{Description: "The public address.", Computed: true},
-			"logo_url":      schema.StringAttribute{Description: "An https:// image shown instead of the title.", Optional: true},
-			"website_url":   schema.StringAttribute{Description: "An https:// link back to your site.", Optional: true},
-			"accent_color":  schema.StringAttribute{Description: "Hex color, e.g. #1F5CFF (the default).", Optional: true, Computed: true, Default: stringdefault.StaticString("#1F5CFF")},
-			"theme":         schema.StringAttribute{Description: "auto (follows the visitor, the default), light or dark.", Optional: true, Computed: true, Default: stringdefault.StaticString("auto"), Validators: []validator.String{stringvalidator.OneOf("auto", "light", "dark")}},
-			"language":      schema.StringAttribute{Description: "The language visitors and subscribers see the page in (default en).", Optional: true, Computed: true, Default: stringdefault.StaticString("en")},
-			"announcement":  schema.StringAttribute{Description: "A notice at the top of the page.", Optional: true},
-			"published":     schema.BoolAttribute{Description: "false takes the page offline without deleting it.", Optional: true, Computed: true, Default: booldefault.StaticBool(true)},
-			"noindex":       schema.BoolAttribute{Description: "Ask search engines not to list the page.", Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-			"show_branding": schema.BoolAttribute{Description: "false removes \"Powered by Uptimecheck\" (paid plans).", Optional: true, Computed: true, Default: booldefault.StaticBool(true)},
-			"project_id":    schema.StringAttribute{Description: "The project (client) it belongs to.", Optional: true},
+			"url":                 schema.StringAttribute{Description: "The public address.", Computed: true},
+			"logo_url":            schema.StringAttribute{Description: "An https:// image shown instead of the title.", Optional: true},
+			"website_url":         schema.StringAttribute{Description: "An https:// link back to your site.", Optional: true},
+			"accent_color":        schema.StringAttribute{Description: "Hex color, e.g. #1F5CFF (the default).", Optional: true, Computed: true, Default: stringdefault.StaticString("#1F5CFF")},
+			"theme":               schema.StringAttribute{Description: "auto (follows the visitor, the default), light or dark.", Optional: true, Computed: true, Default: stringdefault.StaticString("auto"), Validators: []validator.String{stringvalidator.OneOf("auto", "light", "dark")}},
+			"language":            schema.StringAttribute{Description: "The language visitors and subscribers see the page in (default en).", Optional: true, Computed: true, Default: stringdefault.StaticString("en")},
+			"announcement":        schema.StringAttribute{Description: "A notice at the top of the page.", Optional: true},
+			"published":           schema.BoolAttribute{Description: "false takes the page offline without deleting it.", Optional: true, Computed: true, Default: booldefault.StaticBool(true)},
+			"noindex":             schema.BoolAttribute{Description: "Ask search engines not to list the page.", Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
+			"show_branding":       schema.BoolAttribute{Description: "false removes \"Powered by Uptimecheck\" (paid plans).", Optional: true, Computed: true, Default: booldefault.StaticBool(true)},
+			"show_response_times": schema.BoolAttribute{Description: "Each component also shows its average response time and a 24-hour line.", Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
+			"project_id":          schema.StringAttribute{Description: "The project (client) it belongs to.", Optional: true},
 			"components": schema.ListNestedAttribute{
 				Description: "The monitors on the page, in the order visitors see them.",
 				Optional:    true,
@@ -115,6 +117,7 @@ func (r *statusPageResource) input(ctx context.Context, plan statusPageResourceM
 		Published:    plan.Published.ValueBool(),
 		Noindex:      plan.Noindex.ValueBool(),
 		ShowBranding: plan.ShowBranding.ValueBool(),
+		ShowResponse: plan.ShowResponse.ValueBool(),
 		ProjectID:    optional(plan.ProjectID),
 		Components:   []client.StatusPageComponent{},
 	}
@@ -152,6 +155,7 @@ func (m *statusPageResourceModel) set(ctx context.Context, p client.StatusPageDe
 	m.Published = types.BoolValue(p.Published)
 	m.Noindex = types.BoolValue(p.Noindex)
 	m.ShowBranding = types.BoolValue(p.ShowBranding)
+	m.ShowResponse = types.BoolValue(p.ShowResponse)
 	m.ProjectID = stringOrNull(p.ProjectID)
 	if len(p.Components) == 0 && m.Components.IsNull() {
 		return nil

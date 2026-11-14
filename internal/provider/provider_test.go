@@ -254,7 +254,7 @@ func (f *fakeAPI) serveStatusPages(w http.ResponseWriter, r *http.Request, parts
 		f.next++
 		id := fmt.Sprintf("sp_%d", f.next)
 		slug := strings.ReplaceAll(strings.ToLower(body["title"].(string)), " ", "-") + "-x7"
-		t := map[string]any{"id": id, "slug": slug, "url": "https://platform.test/s/" + slug, "description": "", "logoUrl": nil, "websiteUrl": nil, "accentColor": "#1F5CFF", "theme": "auto", "language": "en", "announcement": nil, "published": true, "noindex": false, "showBranding": true, "projectId": nil, "passwordProtected": false, "emailAccess": false, "components": 0.0, "componentList": []any{}}
+		t := map[string]any{"id": id, "slug": slug, "url": "https://platform.test/s/" + slug, "description": "", "logoUrl": nil, "websiteUrl": nil, "accentColor": "#1F5CFF", "theme": "auto", "language": "en", "announcement": nil, "published": true, "noindex": false, "showBranding": true, "showResponseTimes": false, "projectId": nil, "passwordProtected": false, "emailAccess": false, "components": 0.0, "componentList": []any{}}
 		apply(t)
 		f.things[id] = t
 		reply(201, t)

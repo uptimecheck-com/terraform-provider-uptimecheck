@@ -205,6 +205,7 @@ type StatusPageDetail struct {
 	Announcement *string               `json:"announcement"`
 	Noindex      bool                  `json:"noindex"`
 	ShowBranding bool                  `json:"showBranding"`
+	ShowResponse bool                  `json:"showResponseTimes"`
 	Components   []StatusPageComponent `json:"componentList"`
 }
 
@@ -223,6 +224,7 @@ type StatusPageInput struct {
 	Published    bool                  `json:"published"`
 	Noindex      bool                  `json:"noindex"`
 	ShowBranding bool                  `json:"showBranding"`
+	ShowResponse bool                  `json:"showResponseTimes"`
 	ProjectID    *string               `json:"projectId"`
 	Components   []StatusPageComponent `json:"components"`
 }
