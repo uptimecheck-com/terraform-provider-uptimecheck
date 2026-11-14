@@ -71,7 +71,7 @@ func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:    true,
 			},
 			"port":             schema.Int64Attribute{Description: "tcp only.", Optional: true},
-			"interval_seconds": schema.Int64Attribute{Description: "How often to check (60–3600, default 300), or how often a cron job runs. Follows from the type for domain, server, vendor and crawl, and from config.schedule for cron schedules.", Optional: true, Computed: true, PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()}},
+			"interval_seconds": schema.Int64Attribute{Description: "How often to check (60–3600, or 30 on a plan that allows it; default 300), or how often a cron job runs. Follows from the type for domain, server, vendor and crawl, and from config.schedule for cron schedules.", Optional: true, Computed: true, PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()}},
 			"regions": schema.SetAttribute{
 				Description:   "Check locations (e.g. eu-north); empty = all online.",
 				ElementType:   types.StringType,
