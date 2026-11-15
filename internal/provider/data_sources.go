@@ -27,7 +27,7 @@ func (d *listSource[T, M]) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Description: d.description,
 		Attributes: map[string]schema.Attribute{
-			"items": schema.ListNestedAttribute{Computed: true, NestedObject: schema.NestedAttributeObject{Attributes: d.attrs}},
+			"items": schema.ListNestedAttribute{Computed: true, Description: "Every entry in the workspace.", NestedObject: schema.NestedAttributeObject{Attributes: d.attrs}},
 		},
 	}
 }
@@ -67,11 +67,11 @@ func NewAlertChannelsDataSource() datasource.DataSource {
 		path:        "/alert-channels",
 		description: "The workspace's alert channels (without their secrets). Pick ids for a monitor's channel_ids, e.g. [for c in data.uptimecheck_alert_channels.all.items : c.id if c.type == \"slack\"].",
 		attrs: map[string]schema.Attribute{
-			"id":         schema.StringAttribute{Computed: true},
-			"name":       schema.StringAttribute{Computed: true},
+			"id":         schema.StringAttribute{Computed: true, Description: "The channel's id (ch_…), for a monitor's channel_ids."},
+			"name":       schema.StringAttribute{Computed: true, Description: "Shown in the app."},
 			"type":       schema.StringAttribute{Computed: true, Description: "email, push, slack, teams, discord, google_chat, mattermost, telegram, pagerduty, ntfy, pushover, webhook, sms or voice."},
 			"is_default": schema.BoolAttribute{Computed: true, Description: "New monitors in the app get it automatically."},
-			"enabled":    schema.BoolAttribute{Computed: true},
+			"enabled":    schema.BoolAttribute{Computed: true, Description: "false when the channel is paused."},
 		},
 		toModel: func(c client.AlertChannel) alertChannelModel {
 			return alertChannelModel{types.StringValue(c.ID), types.StringValue(c.Name), types.StringValue(c.Type), types.BoolValue(c.IsDefault), types.BoolValue(c.Enabled)}
@@ -91,9 +91,9 @@ func NewProjectsDataSource() datasource.DataSource {
 		path:        "/projects",
 		description: "The workspace's projects (often one per client).",
 		attrs: map[string]schema.Attribute{
-			"id":    schema.StringAttribute{Computed: true},
-			"name":  schema.StringAttribute{Computed: true},
-			"color": schema.StringAttribute{Computed: true},
+			"id":    schema.StringAttribute{Computed: true, Description: "The project's id (prj_…), for project_id."},
+			"name":  schema.StringAttribute{Computed: true, Description: "Unique in the workspace."},
+			"color": schema.StringAttribute{Computed: true, Description: "Hex color of its label."},
 		},
 		toModel: func(p client.Project) projectModel {
 			return projectModel{types.StringValue(p.ID), types.StringValue(p.Name), types.StringValue(p.Color)}
@@ -117,13 +117,13 @@ func NewStatusPagesDataSource() datasource.DataSource {
 		path:        "/status-pages",
 		description: "The workspace's public status pages.",
 		attrs: map[string]schema.Attribute{
-			"id":         schema.StringAttribute{Computed: true},
-			"slug":       schema.StringAttribute{Computed: true},
-			"title":      schema.StringAttribute{Computed: true},
-			"url":        schema.StringAttribute{Computed: true},
-			"published":  schema.BoolAttribute{Computed: true},
-			"project_id": schema.StringAttribute{Computed: true},
-			"language":   schema.StringAttribute{Computed: true},
+			"id":         schema.StringAttribute{Computed: true, Description: "The status page's id (sp_…)."},
+			"slug":       schema.StringAttribute{Computed: true, Description: "The address after /s/."},
+			"title":      schema.StringAttribute{Computed: true, Description: "The page's heading."},
+			"url":        schema.StringAttribute{Computed: true, Description: "The public address."},
+			"published":  schema.BoolAttribute{Computed: true, Description: "false when the page is offline."},
+			"project_id": schema.StringAttribute{Computed: true, Description: "The project (client) it belongs to, if any."},
+			"language":   schema.StringAttribute{Computed: true, Description: "The language visitors see the page in."},
 		},
 		toModel: func(p client.StatusPage) statusPageModel {
 			project := types.StringNull()

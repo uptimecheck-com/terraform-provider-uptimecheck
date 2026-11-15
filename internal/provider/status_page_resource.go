@@ -63,7 +63,7 @@ func (r *statusPageResource) Schema(_ context.Context, _ resource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		Description: "A public status page: its look and the monitors it shows. The password, the email access list and custom CSS are set in the app and left alone here. Deleting it deletes its subscribers, written updates and visitor statistics.",
 		Attributes: map[string]schema.Attribute{
-			"id":          schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"id":          schema.StringAttribute{Description: "The status page's id (sp_…).", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"title":       schema.StringAttribute{Description: "The page's heading, at most 80 characters.", Required: true, Validators: []validator.String{stringvalidator.LengthBetween(1, 80)}},
 			"description": schema.StringAttribute{Description: "A line under the title.", Optional: true, Computed: true, Default: stringdefault.StaticString("")},
 			"slug": schema.StringAttribute{
@@ -88,7 +88,7 @@ func (r *statusPageResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Description: "The monitors on the page, in the order visitors see them.",
 				Optional:    true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-					"monitor_id": schema.StringAttribute{Required: true},
+					"monitor_id": schema.StringAttribute{Description: "The monitor shown (mon_…).", Required: true},
 					"name":       schema.StringAttribute{Description: "What visitors see.", Required: true, Validators: []validator.String{stringvalidator.LengthBetween(1, 80)}},
 					"group":      schema.StringAttribute{Description: "Components with the same group fold under it.", Optional: true},
 				}},

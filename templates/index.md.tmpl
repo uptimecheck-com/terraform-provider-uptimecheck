@@ -1,0 +1,24 @@
+---
+page_title: "Uptimecheck Provider"
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# Uptimecheck Provider
+
+{{ .Description | trimspace }}
+
+[Uptimecheck](https://uptimecheck.com) checks websites, APIs, ports, DNS, domains, cron jobs and servers, alerts
+the channels you choose and shows the results on public status pages. This provider talks to its REST API
+(`/api/v1`, reference at https://app.uptimecheck.com/docs/api).
+
+## Authentication
+
+Create a read & write API key under Settings › API in the app and pass it as `api_key`, or better, set the
+`UPTIMECHECK_API_KEY` environment variable so the key stays out of your configuration.
+
+## Example Usage
+
+{{ tffile "examples/provider/provider.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}

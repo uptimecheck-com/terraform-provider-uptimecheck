@@ -15,7 +15,7 @@ import (
 )
 
 // DefaultEndpoint is the production API.
-const DefaultEndpoint = "https://platform.uptimecheck.com/api/v1"
+const DefaultEndpoint = "https://app.uptimecheck.com/api/v1"
 
 type uptimecheckProvider struct{ version string }
 

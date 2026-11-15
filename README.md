@@ -60,7 +60,11 @@ provider_installation {
 
 `go build -o terraform-provider-uptimecheck` puts the binary there.
 
-## Publishing (not done yet)
+Registry docs in `docs/` are generated from the schema descriptions, `examples/` and `templates/`:
+run `go generate ./...` after changing any of them and commit the result.
 
-The Terraform Registry needs a public GitHub repo named `terraform-provider-uptimecheck`, signed
-releases (GPG) built with GoReleaser, and the repo added in the registry. See TODO.md.
+## Releases
+
+The provider is developed in the Uptimecheck app repo and mirrored to the public repo
+`uptimecheck-com/terraform-provider-uptimecheck`, where a `vX.Y.Z` tag builds, signs and publishes a
+release with GoReleaser (`.github/workflows/release.yml`) for the Terraform Registry.

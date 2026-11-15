@@ -10,6 +10,10 @@ import (
 	"github.com/uptimecheck-com/terraform-provider-uptimecheck/internal/provider"
 )
 
+// Registry docs (docs/) from the schema descriptions, examples/ and templates/: run `go generate` here and
+// commit the result. tfplugindocs downloads a terraform binary when none is on PATH.
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.25.0 generate --provider-name uptimecheck
+
 // Set by the release build.
 var version = "dev"
 

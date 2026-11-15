@@ -51,7 +51,7 @@ func (r *alertChannelResource) Schema(_ context.Context, _ resource.SchemaReques
 	resp.Schema = schema.Schema{
 		Description: "An alert channel: where alerts are sent. For the types that need only their address or key; SMS, phone calls, Telegram, push and Add to Slack are set up in the app and can be read with the uptimecheck_alert_channels data source.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"id": schema.StringAttribute{Description: "The alert channel's id (ch_…).", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"type": schema.StringAttribute{
 				Description:   "One of " + fmt.Sprint(channelTypes) + ". Changing it replaces the channel.",
 				Required:      true,

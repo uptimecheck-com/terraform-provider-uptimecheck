@@ -38,7 +38,7 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	resp.Schema = schema.Schema{
 		Description: "A project groups monitors and status pages, for example per client. Deleting it leaves its monitors and status pages without a project; its client reports and client access are deleted with it.",
 		Attributes: map[string]schema.Attribute{
-			"id":   schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"id":   schema.StringAttribute{Description: "The project's id (prj_…).", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"name": schema.StringAttribute{Description: "Unique in the workspace, at most 60 characters.", Required: true, Validators: []validator.String{stringvalidator.LengthBetween(1, 60)}},
 			"color": schema.StringAttribute{
 				Description: "Hex color of its label, e.g. #1F5CFF (the default).",

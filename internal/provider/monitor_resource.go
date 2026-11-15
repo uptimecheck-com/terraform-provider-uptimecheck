@@ -58,7 +58,7 @@ func (r *monitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	resp.Schema = schema.Schema{
 		Description: "A monitor: a website or API, port, ping, DNS records, domain expiry, cron job, server, third-party service, site health scan or multi-step flow.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"id": schema.StringAttribute{Description: "The monitor's id (mon_…).", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"type": schema.StringAttribute{
 				Description:   "One of " + fmt.Sprint(monitorTypes) + ". Changing it replaces the monitor.",
 				Required:      true,
